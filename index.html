@@ -316,28 +316,51 @@ Documents
     });
   }
 
-  async function createPdf(imageFiles) {
+async function createPdf(imageFiles) {
     try {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+        const fixedHeight = 280; // Fixed height for all images
+        let isFirstPage = true;
 
-      for (let folder of imageFiles) {
-        const { subfolderName, images } = folder;
-        for (let i = 0; i < images.length; i++) {
-          const { file } = images[i];
-          const imgData = await file.arrayBuffer();
-          const imgBase64 = await convertToBase64(imgData);
+        for (let folder of imageFiles) {
+            for (let i = 0; i < folder.images.length; i++) {
+                const { file } = folder.images[i];
+                const imgData = await file.arrayBuffer();
+                const imgBase64 = await convertToBase64(imgData);
 
-          if (i > 0) {
-            pdf.addPage();
-          }
-          pdf.addImage(imgBase64, 'JPEG', 0, 20, 210, 297);
+                const img = new Image();
+                img.src = "data:image/jpeg;base64," + imgBase64;
+                await img.decode();
 
-          processedImages++;
-          await updatePdfProgressBar();
-          updateETA(processingStartTime, processedImages, totalImages);
+                const aspectRatio = img.width / img.height;
+                const newWidth = fixedHeight * aspectRatio; // Maintain aspect ratio
+
+                if (!isFirstPage) pdf.addPage();
+                isFirstPage = false;
+
+                pdf.addImage(imgBase64, 'JPEG', 10, 10, newWidth, fixedHeight);
+
+                processedImages++;
+                await updatePdfProgressBar();
+                updateETA(processingStartTime, processedImages, totalImages);
+            }
         }
-      }
+
+        pdf.save(`${mainFolderName}.pdf`);
+
+        const totalTime = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(totalTime / 60);
+        const seconds = totalTime % 60;
+
+        progressText.textContent += `\nPDF creation complete. Total time: ${minutes}m ${seconds}s.`;
+
+    } catch (err) {
+        console.error("Error creating PDF", err);
+        progressText.textContent += `Error: ${err.message}`;
+    }
+}
+
 
       pdf.save(`${mainFolderName}.pdf`);
 
