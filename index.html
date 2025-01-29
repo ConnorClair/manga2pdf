@@ -159,7 +159,7 @@ Documents
     <button id="selectMainFolder">Select Main Folder</button>
     <button id="processFiles" disabled>Process Files</button>
     <label for="pageLimit">Pages per PDF:</label>
-    <input type="number" id="pageLimit" value="1000" min="100" max="10000" step="10">
+    <input type="number" id="pageLimit" value="1000" min="100" max="1000" step="10">
 
     <div class="progress-container">
       <div id="progress-bar" class="progress-bar progress-bar-green"></div>
@@ -343,8 +343,8 @@ Documents
   async function createPdf(imageFiles) {
     try {
         const { jsPDF } = window.jspdf;
-        let maxPages = parseInt(document.getElementById("pageLimit").value) || 10000;
-        maxPages = Math.min(Math.max(maxPages, 100), 10000); // Ensure within range
+        let maxPages = parseInt(document.getElementById("pageLimit").value) || 1000;
+        maxPages = Math.min(Math.max(maxPages, 100), 1000); // Ensure within range
 
         let pdf = new jsPDF();
         const pageWidth = pdf.internal.pageSize.getWidth();
