@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -318,15 +319,16 @@ Documents
       reader.readAsDataURL(blob);
     });
   }
-
-async function createPdf(imageFiles) {
+  async function createPdf(imageFiles) {
     try {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF();
+        let pdf = new jsPDF();
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const margin = 10; // Margin to prevent images from touching the edges
+        const margin = 10; // Margin to prevent images from touching edges
         let isFirstPage = true;
+        let pdfCount = 1; // Track PDF file number
+        let pageCount = 0; // Track pages in current PDF
 
         for (let folder of imageFiles) {
             const { subfolderName, images } = folder;
@@ -342,16 +344,16 @@ async function createPdf(imageFiles) {
                         let imgWidth = img.width;
                         let imgHeight = img.height;
 
-                        // Define max available space for the image
+                        // Max available space
                         let maxWidth = pageWidth - 2 * margin;
                         let maxHeight = pageHeight - 2 * margin;
 
-                        // Scale down the image while keeping aspect ratio
+                        // Scale while keeping aspect ratio
                         let scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
                         let newWidth = imgWidth * scale;
                         let newHeight = imgHeight * scale;
 
-                        // Calculate centered positions
+                        // Centered positions
                         let xPos = (pageWidth - newWidth) / 2;
                         let yPos = (pageHeight - newHeight) / 2;
 
@@ -363,22 +365,35 @@ async function createPdf(imageFiles) {
                         updatePdfProgressBar();
                         updateETA(processingStartTime, processedImages, totalImages);
 
-                        // Free memory by revoking the Blob URL
-                        URL.revokeObjectURL(imgBlob);
+                        pageCount++;
 
+                        // Save and start new PDF every 1000 pages
+                        if (pageCount >= 1000) {
+                            pdf.save(`${mainFolderName}_part${pdfCount}.pdf`);
+                            pdf = new jsPDF();
+                            isFirstPage = true;
+                            pageCount = 0;
+                            pdfCount++;
+                        }
+
+                        // Free memory
+                        URL.revokeObjectURL(imgBlob);
                         resolve();
                     };
                 });
             }
         }
 
-        pdf.save(`${mainFolderName}.pdf`);
+        // Save last part if not empty
+        if (pageCount > 0) {
+            pdf.save(`${mainFolderName}_part${pdfCount}.pdf`);
+        }
 
         const totalTime = Math.floor((Date.now() - startTime) / 1000);
         const minutes = Math.floor(totalTime / 60);
         const seconds = totalTime % 60;
 
-        progressText.textContent += `\nPDF compression complete. Total time: ${minutes}m ${seconds}s.`;
+        progressText.textContent += `\nPDF creation complete. Total time: ${minutes}m ${seconds}s.`;
 
     } catch (err) {
         console.error("Error creating PDF", err);
