@@ -254,8 +254,11 @@ Documents
         return;
     }
 
+    const processButton = document.getElementById("processFiles");
+    processButton.disabled = true; // Disable button while processing
+
     try {
-        resetProgressBars(); // Reset progress bars and text for a new folder
+        resetProgressBars();
         startTime = Date.now();
         processingStartTime = startTime;
 
@@ -266,7 +269,6 @@ Documents
 
         let imageFiles = [];
 
-        // Get and sort subfolders numerically
         let subfolders = [];
         for await (const [subfolderName, subfolderHandle] of mainFolderHandle.entries()) {
             if (subfolderHandle.kind === "directory") {
@@ -279,18 +281,14 @@ Documents
             return numA - numB;
         });
 
-        // Process each sorted subfolder
         for (const folder of subfolders) {
             let subfolderImages = [];
-
             for await (const [fileName, fileHandle] of folder.handle.entries()) {
                 if (fileHandle.kind === "file" && fileName.match(/\.(jpg|jpeg|png|gif)$/i)) {
                     const file = await fileHandle.getFile();
                     subfolderImages.push({ subfolderName: folder.name, fileName, file });
                 }
             }
-
-            // Sort images numerically
             subfolderImages.sort((a, b) => {
                 const numA = parseInt(a.fileName.replace(/\D/g, ''), 10) || 0;
                 const numB = parseInt(b.fileName.replace(/\D/g, ''), 10) || 0;
@@ -303,7 +301,6 @@ Documents
         totalImages = imageFiles.reduce((sum, folder) => sum + folder.images.length, 0);
         processedImages = 0;
 
-        // Save images in correct order
         for (let folder of imageFiles) {
             for (let i = 0; i < folder.images.length; i++) {
                 const { subfolderName, fileName, file } = folder.images[i];
@@ -324,6 +321,8 @@ Documents
     } catch (err) {
         console.error("Error processing files", err);
         progressText.textContent += `Error: ${err.message}`;
+    } finally {
+        processButton.disabled = false; // Re-enable button after processing
     }
 }
 
