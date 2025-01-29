@@ -250,65 +250,83 @@ Documents
 
   async function processFiles() {
     if (!mainFolderHandle) {
-      progressText.textContent = "No folder selected.";
-      return;
+        progressText.textContent = "No folder selected.";
+        return;
     }
 
     try {
-      resetProgressBars(); // Reset progress bars and text for a new folder
+        resetProgressBars(); // Reset progress bars and text for a new folder
+        startTime = Date.now();
+        processingStartTime = startTime;
 
-      startTime = Date.now();
-      processingStartTime = startTime;
+        const destinationFolderHandle = await mainFolderHandle.getDirectoryHandle("AllImages", { create: true });
+        totalFiles = await countFilesInFolder(mainFolderHandle);
+        processedFiles = 0;
+        await updateProgressBar();
 
-      const destinationFolderHandle = await mainFolderHandle.getDirectoryHandle("AllImages", { create: true });
-      totalFiles = await countFilesInFolder(mainFolderHandle);
-      processedFiles = 0;
-      await updateProgressBar();
+        let imageFiles = [];
 
-      let imageFiles = [];
-      for await (const [subfolderName, subfolderHandle] of mainFolderHandle.entries()) {
-        if (subfolderHandle.kind === "directory") {
-          let subfolderImages = [];
-          for await (const [fileName, fileHandle] of subfolderHandle.entries()) {
-            if (fileHandle.kind === "file" && fileName.match(/\.(jpg|jpeg|png|gif)$/)) {
-              const file = await fileHandle.getFile();
-              subfolderImages.push({ subfolderName, fileName, file });
+        // Get and sort subfolders numerically
+        let subfolders = [];
+        for await (const [subfolderName, subfolderHandle] of mainFolderHandle.entries()) {
+            if (subfolderHandle.kind === "directory") {
+                subfolders.push({ name: subfolderName, handle: subfolderHandle });
             }
-          }
-          subfolderImages.sort((a, b) => {
-            const numA = parseInt(a.fileName.replace(/\D/g, ''), 10);
-            const numB = parseInt(b.fileName.replace(/\D/g, ''), 10);
+        }
+        subfolders.sort((a, b) => {
+            const numA = parseInt(a.name.replace(/\D/g, ''), 10) || 0;
+            const numB = parseInt(b.name.replace(/\D/g, ''), 10) || 0;
             return numA - numB;
-          });
-          imageFiles.push({ subfolderName, images: subfolderImages });
+        });
+
+        // Process each sorted subfolder
+        for (const folder of subfolders) {
+            let subfolderImages = [];
+
+            for await (const [fileName, fileHandle] of folder.handle.entries()) {
+                if (fileHandle.kind === "file" && fileName.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                    const file = await fileHandle.getFile();
+                    subfolderImages.push({ subfolderName: folder.name, fileName, file });
+                }
+            }
+
+            // Sort images numerically
+            subfolderImages.sort((a, b) => {
+                const numA = parseInt(a.fileName.replace(/\D/g, ''), 10) || 0;
+                const numB = parseInt(b.fileName.replace(/\D/g, ''), 10) || 0;
+                return numA - numB;
+            });
+
+            imageFiles.push({ subfolderName: folder.name, images: subfolderImages });
         }
-      }
 
-      totalImages = imageFiles.reduce((sum, folder) => sum + folder.images.length, 0);
-      processedImages = 0;
+        totalImages = imageFiles.reduce((sum, folder) => sum + folder.images.length, 0);
+        processedImages = 0;
 
-      for (let folder of imageFiles) {
-        for (let i = 0; i < folder.images.length; i++) {
-          const { subfolderName, fileName, file } = folder.images[i];
-          const newFileName = `${subfolderName}-${fileName}`;
-          const destinationFileHandle = await destinationFolderHandle.getFileHandle(newFileName, { create: true });
-          const writable = await destinationFileHandle.createWritable();
-          await writable.write(file);
-          await writable.close();
+        // Save images in correct order
+        for (let folder of imageFiles) {
+            for (let i = 0; i < folder.images.length; i++) {
+                const { subfolderName, fileName, file } = folder.images[i];
+                const newFileName = `${subfolderName}-${fileName}`;
+                const destinationFileHandle = await destinationFolderHandle.getFileHandle(newFileName, { create: true });
+                const writable = await destinationFileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
 
-          processedFiles++;
-          await updateProgressBar();
-          updateETA(processingStartTime, processedFiles, totalFiles);
+                processedFiles++;
+                await updateProgressBar();
+                updateETA(processingStartTime, processedFiles, totalFiles);
+            }
         }
-      }
 
-      await createPdf(imageFiles);
+        await createPdf(imageFiles);
 
     } catch (err) {
-      console.error("Error processing files", err);
-      progressText.textContent += `Error: ${err.message}`;
+        console.error("Error processing files", err);
+        progressText.textContent += `Error: ${err.message}`;
     }
-  }
+}
+
 
   async function convertToBase64(arrayBuffer) {
     return new Promise((resolve, reject) => {
