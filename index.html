@@ -158,6 +158,8 @@ Documents
 
     <button id="selectMainFolder">Select Main Folder</button>
     <button id="processFiles" disabled>Process Files</button>
+    <label for="pageLimit">Pages per PDF:</label>
+    <input type="number" id="pageLimit" value="1000" min="100" max="1000" step="10">
 
     <div class="progress-container">
       <div id="progress-bar" class="progress-bar progress-bar-green"></div>
@@ -319,16 +321,20 @@ Documents
       reader.readAsDataURL(blob);
     });
   }
+ 
   async function createPdf(imageFiles) {
     try {
         const { jsPDF } = window.jspdf;
+        let maxPages = parseInt(document.getElementById("pageLimit").value) || 1000;
+        maxPages = Math.min(Math.max(maxPages, 100), 1000); // Ensure within range
+
         let pdf = new jsPDF();
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 10; // Margin to prevent images from touching edges
         let isFirstPage = true;
-        let pdfCount = 1; // Track PDF file number
-        let pageCount = 0; // Track pages in current PDF
+        let pdfCount = 1;
+        let pageCount = 0;
 
         for (let folder of imageFiles) {
             const { subfolderName, images } = folder;
@@ -367,8 +373,8 @@ Documents
 
                         pageCount++;
 
-                        // Save and start new PDF every 1000 pages
-                        if (pageCount >= 1000) {
+                        // Save and start new PDF after reaching max pages
+                        if (pageCount >= maxPages) {
                             pdf.save(`${mainFolderName}_part${pdfCount}.pdf`);
                             pdf = new jsPDF();
                             isFirstPage = true;
