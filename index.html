@@ -318,40 +318,68 @@ Documents
 
   async function createPdf(imageFiles) {
     try {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10; // Margin to prevent touching the edges
+        let isFirstPage = true;
 
-      for (let folder of imageFiles) {
-        const { subfolderName, images } = folder;
-        for (let i = 0; i < images.length; i++) {
-          const { file } = images[i];
-          const imgData = await file.arrayBuffer();
-          const imgBase64 = await convertToBase64(imgData);
+        for (let folder of imageFiles) {
+            const { subfolderName, images } = folder;
+            for (let i = 0; i < images.length; i++) {
+                const { file } = images[i];
+                const imgData = await file.arrayBuffer();
+                const imgBase64 = await convertToBase64(imgData);
 
-          if (i > 0) {
-            pdf.addPage();
-          }
-          pdf.addImage(imgBase64, 'JPEG', 0, 20, 210, 297);
+                const img = new Image();
+                img.src = `data:image/jpeg;base64,${imgBase64}`;
 
-          processedImages++;
-          await updatePdfProgressBar();
-          updateETA(processingStartTime, processedImages, totalImages);
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        let imgWidth = img.width;
+                        let imgHeight = img.height;
+
+                        // Define max available space for the image
+                        let maxWidth = pageWidth - 2 * margin;
+                        let maxHeight = pageHeight - 2 * margin;
+
+                        // Scale down the image while keeping aspect ratio
+                        let scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
+                        let newWidth = imgWidth * scale;
+                        let newHeight = imgHeight * scale;
+
+                        // Calculate centered positions
+                        let xPos = (pageWidth - newWidth) / 2;
+                        let yPos = (pageHeight - newHeight) / 2;
+
+                        if (!isFirstPage) pdf.addPage();
+                        pdf.addImage(imgBase64, 'JPEG', xPos, yPos, newWidth, newHeight);
+                        isFirstPage = false;
+
+                        processedImages++;
+                        updatePdfProgressBar();
+                        updateETA(processingStartTime, processedImages, totalImages);
+
+                        resolve();
+                    };
+                });
+            }
         }
-      }
 
-      pdf.save(`${mainFolderName}.pdf`);
+        pdf.save(`${mainFolderName}.pdf`);
 
-      const totalTime = Math.floor((Date.now() - startTime) / 1000);
-      const minutes = Math.floor(totalTime / 60);
-      const seconds = totalTime % 60;
+        const totalTime = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(totalTime / 60);
+        const seconds = totalTime % 60;
 
-      progressText.textContent += `\nPDF compression complete. Total time: ${minutes}m ${seconds}s.`;
+        progressText.textContent += `\nPDF compression complete. Total time: ${minutes}m ${seconds}s.`;
 
     } catch (err) {
-      console.error("Error creating PDF", err);
-      progressText.textContent += `Error: ${err.message}`;
+        console.error("Error creating PDF", err);
+        progressText.textContent += `Error: ${err.message}`;
     }
-  }
+}
 
   document.getElementById("selectMainFolder").addEventListener("click", selectMainFolder);
   document.getElementById("processFiles").addEventListener("click", processFiles);
