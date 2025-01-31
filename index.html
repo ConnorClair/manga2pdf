@@ -276,11 +276,12 @@ Documents
             }
         }
       
-subfolders.sort((a, b) => {
-    const numA = parseFloat(a.name.replace(/[^0-9.]/g, '')) || 0;
-    const numB = parseFloat(b.name.replace(/[^0-9.]/g, '')) || 0;
-    return numA - numB;
-});
+        subfolders.sort((a, b) => {
+          const numA = parseFloat(a.name.match(/[\d]+(\.\d+)?$/)?.[0]) || 0;
+          const numB = parseFloat(b.name.match(/[\d]+(\.\d+)?$/)?.[0]) || 0;
+          return numA - numB;
+      });
+      
 
 
         for (const folder of subfolders) {
