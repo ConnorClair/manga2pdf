@@ -275,11 +275,13 @@ Documents
                 subfolders.push({ name: subfolderName, handle: subfolderHandle });
             }
         }
-        subfolders.sort((a, b) => {
-            const numA = parseInt(a.name.replace(/\D/g, ''), 10) || 0;
-            const numB = parseInt(b.name.replace(/\D/g, ''), 10) || 0;
-            return numA - numB;
-        });
+      
+subfolders.sort((a, b) => {
+    const numA = parseFloat(a.name.replace(/[^0-9.]/g, '')) || 0;
+    const numB = parseFloat(b.name.replace(/[^0-9.]/g, '')) || 0;
+    return numA - numB;
+});
+
 
         for (const folder of subfolders) {
             let subfolderImages = [];
