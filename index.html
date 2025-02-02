@@ -218,15 +218,10 @@ Documents
     progressText.textContent = `Processing files: ${processedFiles} of ${totalFiles} completed (${Math.round(percentage)}%)`;
   }
 
-async function updatePdfProgressBar() {
+  async function updatePdfProgressBar() {
     const percentage = totalImages > 0 ? (processedImages / totalImages) * 100 : 0;
-    const roundedPercentage = Math.round(percentage);
     pdfProgressBar.style.width = `${percentage}%`;
-    
-    // Update the page title for image processing progress
-    document.title = `PDF Progress: ${roundedPercentage}% - Batch Manga To PDF`;
-}
-
+  }
 
   async function updateETA(startTime, processed, total) {
     const elapsedTime = Date.now() - startTime;
@@ -253,7 +248,7 @@ async function updatePdfProgressBar() {
     return count;
   }
 
-async function processFiles() {
+  async function processFiles() {
     if (!mainFolderHandle) {
         progressText.textContent = "No folder selected.";
         return;
@@ -270,26 +265,22 @@ async function processFiles() {
         const destinationFolderHandle = await mainFolderHandle.getDirectoryHandle("AllImages", { create: true });
         totalFiles = await countFilesInFolder(mainFolderHandle);
         processedFiles = 0;
-        await updateProgressBar();  // Call here to update title on start
+        await updateProgressBar();
 
         let imageFiles = [];
-        let subfolders = [];
 
-        // Iterate over subfolders and collect images
+        let subfolders = [];
         for await (const [subfolderName, subfolderHandle] of mainFolderHandle.entries()) {
             if (subfolderHandle.kind === "directory") {
                 subfolders.push({ name: subfolderName, handle: subfolderHandle });
             }
         }
-
-        // Sort subfolders numerically by chapter name
         subfolders.sort((a, b) => {
-            const numA = parseFloat(a.name.match(/[\d]+(\.\d+)?$/)?.[0]) || 0;
-            const numB = parseFloat(b.name.match(/[\d]+(\.\d+)?$/)?.[0]) || 0;
+            const numA = parseInt(a.name.replace(/\D/g, ''), 10) || 0;
+            const numB = parseInt(b.name.replace(/\D/g, ''), 10) || 0;
             return numA - numB;
         });
 
-        // Process images in each subfolder
         for (const folder of subfolders) {
             let subfolderImages = [];
             for await (const [fileName, fileHandle] of folder.handle.entries()) {
@@ -298,7 +289,6 @@ async function processFiles() {
                     subfolderImages.push({ subfolderName: folder.name, fileName, file });
                 }
             }
-            // Sort images by file name
             subfolderImages.sort((a, b) => {
                 const numA = parseInt(a.fileName.replace(/\D/g, ''), 10) || 0;
                 const numB = parseInt(b.fileName.replace(/\D/g, ''), 10) || 0;
@@ -311,7 +301,6 @@ async function processFiles() {
         totalImages = imageFiles.reduce((sum, folder) => sum + folder.images.length, 0);
         processedImages = 0;
 
-        // Process each image
         for (let folder of imageFiles) {
             for (let i = 0; i < folder.images.length; i++) {
                 const { subfolderName, fileName, file } = folder.images[i];
@@ -322,12 +311,12 @@ async function processFiles() {
                 await writable.close();
 
                 processedFiles++;
-                await updateProgressBar();  // Update progress bar and title after processing each file
+                await updateProgressBar();
                 updateETA(processingStartTime, processedFiles, totalFiles);
             }
         }
 
-        await createPdf(imageFiles);  // Call to create the PDF
+        await createPdf(imageFiles);
 
     } catch (err) {
         console.error("Error processing files", err);
@@ -336,7 +325,8 @@ async function processFiles() {
         processButton.disabled = false; // Re-enable button after processing
     }
 }
-  
+
+
   async function convertToBase64(arrayBuffer) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
